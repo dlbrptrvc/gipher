@@ -58,8 +58,14 @@ function pasteImage(src) {
 
 addGifs();
 
+let controller = new AbortController();
+let signal = controller.signal;
+
 textinput.addEventListener("input", (event) => {
   clearScreen();
+  controller.abort();
+  controller = new AbortController();
+  signal = controller.signal;
   counter = 0;
   offset = 0;
   let str = convert(event.target.value);
@@ -72,11 +78,13 @@ textinput.addEventListener("input", (event) => {
 
 function searchGifs(str) {
   fetch(
-    `https://api.giphy.com/v1/gifs/search?api_key=wLCv5l1DHz3a3580HH8ro4cmSTD816IB&q=${str}&limit=${limit}&offset=${offset}&rating=g&lang=en&bundle=messaging_non_clips`
+    `https://api.giphy.com/v1/gifs/search?api_key=wLCv5l1DHz3a3580HH8ro4cmSTD816IB&q=${str}&limit=${limit}&offset=${offset}&rating=g&lang=en&bundle=messaging_non_clips`,
+    { signal }
   )
     .then(function (response) {
       return response.json();
     })
+
     .then(function (response) {
       offset += limit;
       response.data.forEach((item, index) => {
@@ -85,7 +93,8 @@ function searchGifs(str) {
           observer.observe(img);
         }
       });
-    });
+    })
+    .catch(function (response) {});
 }
 
 function convert(str) {
