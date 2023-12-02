@@ -5,7 +5,6 @@ let observer = new IntersectionObserver((entries) => {
     if (entry.isIntersecting) {
       counter++;
       if (counter >= 2) {
-        observer.unobserve(entry.target);
         if (textinput.value !== "") {
           searchGifs(convert(textinput.value));
         } else {
@@ -17,23 +16,28 @@ let observer = new IntersectionObserver((entries) => {
 });
 
 let offset = 0;
-let limit = 15;
+const limit = 15;
+let controller = new AbortController();
+let signal = controller.signal;
 
 function addGifs() {
   fetch(
-    `https://api.giphy.com/v1/gifs/trending?api_key=wLCv5l1DHz3a3580HH8ro4cmSTD816IB&limit=${limit}&offset=${offset}&rating=g&bundle=messaging_non_clips`
+    `https://api.giphy.com/v1/gifs/trending?api_key=wLCv5l1DHz3a3580HH8ro4cmSTD816IB&limit=${limit}&offset=${offset}&rating=g&bundle=messaging_non_clips`,
+    { signal },
+    { mode: "cors" }
   )
     .then(function (response) {
       return response.json();
     })
     .then(function (response) {
       offset += limit;
-      response.data.forEach((item, index) => {
-        let img = pasteImage(item.images.original.url);
-        if (index == limit - 1) {
-          observer.observe(img);
-        }
+      if (images.lastChild) {
+        observer.unobserve(images.lastChild);
+      }
+      response.data.forEach((item) => {
+        pasteImage(item.images.original.url);
       });
+      observer.observe(images.lastChild);
     });
 }
 
@@ -42,6 +46,7 @@ let timeout = {};
 function pasteImage(src) {
   let img = document.createElement("img");
   img.src = src;
+  // COPY URL
   img.addEventListener("click", (event) => {
     clearTimeout(timeout);
     navigator.clipboard.writeText(event.target.src);
@@ -53,13 +58,9 @@ function pasteImage(src) {
     }, 1500);
   });
   images.append(img);
-  return img;
 }
 
 addGifs();
-
-let controller = new AbortController();
-let signal = controller.signal;
 
 textinput.addEventListener("input", (event) => {
   clearScreen();
@@ -79,7 +80,8 @@ textinput.addEventListener("input", (event) => {
 function searchGifs(str) {
   fetch(
     `https://api.giphy.com/v1/gifs/search?api_key=wLCv5l1DHz3a3580HH8ro4cmSTD816IB&q=${str}&limit=${limit}&offset=${offset}&rating=g&lang=en&bundle=messaging_non_clips`,
-    { signal }
+    { signal },
+    { mode: "cors" }
   )
     .then(function (response) {
       return response.json();
@@ -87,12 +89,13 @@ function searchGifs(str) {
 
     .then(function (response) {
       offset += limit;
-      response.data.forEach((item, index) => {
-        let img = pasteImage(item.images.original.url);
-        if (index == limit - 1) {
-          observer.observe(img);
-        }
+      if (images.lastChild) {
+        observer.unobserve(images.lastChild);
+      }
+      response.data.forEach((item) => {
+        pasteImage(item.images.original.url);
       });
+      observer.observe(images.lastChild);
     })
     .catch(function (response) {});
 }
@@ -102,5 +105,8 @@ function convert(str) {
 }
 
 function clearScreen() {
-  images.replaceChildren();
+  images.querySelectorAll("*").forEach((item) => {
+    item.removeAttribute("src");
+    item.remove();
+  });
 }
